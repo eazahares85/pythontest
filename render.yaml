@@ -1,0 +1,23 @@
+# Despliegue en Render desde la raíz del repositorio — plan Hobby (free).
+# Límites habituales: spin-down tras inactividad, cold start ~1 min, uso mensual limitado (ver docs.render.com/free).
+# MongoDB no está incluido: usa MongoDB Atlas (tier gratuito) y MONGODB_URI.
+services:
+  - type: web
+    name: innovasoft-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: innovasoft_app
+      - key: INNOVASOFT_API_BASE
+        value: https://pruebareactjs.test-class.com/Api
+      - key: SERVE_FRONTEND
+        value: "true"
+      # Misma URL pública si solo usas esta app (ej. tras el primer deploy pon tu URL HTTPS)
+      - key: CORS_ORIGINS
+        sync: false

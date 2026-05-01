@@ -1,0 +1,105 @@
+:root {
+  --corp-navy: #0a2540;
+  --corp-accent: #0d6efd;
+  --corp-accent-soft: #5da9ff;
+  --corp-bg-page: #e9ecef;
+  --corp-sidebar-bg: #f5f7fa;
+}
+
+.theme-body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  background: var(--corp-bg-page);
+}
+
+.app-headerbar {
+  background: var(--corp-navy);
+  color: #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+}
+
+.sidebar {
+  background: var(--corp-sidebar-bg);
+  min-height: calc(100vh - 56px);
+  border-right: 1px solid #dee2e6;
+}
+
+.sidebar .badge-prefix {
+  display: inline-block;
+  min-width: 1.85rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--corp-accent-soft);
+}
+
+.sidebar .menu-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.content-area {
+  min-height: calc(100vh - 56px);
+  background: #fff;
+}
+
+.btn-corp-primary {
+  background-color: var(--corp-accent);
+  border-color: var(--corp-accent);
+  font-weight: 600;
+}
+
+.auth-page-title {
+  font-weight: 700;
+  color: #212529;
+}
+
+.login-outer-heading {
+  font-weight: 700;
+  color: #212529;
+}
+
+.card-auth {
+  max-width: 440px;
+  border-radius: 0.65rem;
+  box-shadow: 0 2px 24px rgb(14 53 112 / 0.08);
+}
+
+.table-head-corp thead th {
+  background: var(--corp-accent);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.hero-welcome {
+  font-size: 2.75rem;
+  font-weight: 700;
+}
+
+.error-hero {
+  color: var(--corp-accent);
+  font-weight: 800;
+  font-size: 3.75rem;
+}
+
+.avatar-circle {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: #adb5bd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-circle i {
+  font-size: 2.75rem;
+  color: #fff;
+}
