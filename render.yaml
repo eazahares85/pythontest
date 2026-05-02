@@ -26,7 +26,6 @@ services:
   - type: web
     name: innovasoft-front
     runtime: static
-    plan: free
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
