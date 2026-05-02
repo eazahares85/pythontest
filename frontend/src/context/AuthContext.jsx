@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { apiFetch } from "../api/http";
+import { apiFetch } from "../api/http.js";
 
 const STORAGE_KEY = "auth_session";
 
@@ -46,19 +46,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    const prev = session?.token ? session : null;
     try {
-      if (prev?.token)
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${prev.token}` },
-        });
+      if (sessionStorage.getItem(STORAGE_KEY))
+        await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     } catch {
-      /* opcional si red cae */
     }
     sessionStorage.removeItem(STORAGE_KEY);
     setSession(null);
-  }, [session]);
+  }, []);
 
   const value = useMemo(
     () => ({ session, setSession, login, logout }),

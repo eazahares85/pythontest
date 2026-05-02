@@ -1,3 +1,22 @@
+const RAW = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL
+  : "";
+
+const API_ROOT = String(RAW ?? "").trim().replace(/\/$/, "");
+
+if (typeof import.meta !== "undefined" && import.meta.env?.MODE === "production" && !API_ROOT)
+  console.warn(
+    "[pythontest] Falta VITE_API_URL en el build. Configúrala en Render Static (URL HTTPS del backend, sin barra final)."
+  );
+
+export function resolveApiUrl(path) {
+  if (!path) return API_ROOT || "/";
+  if (/^https?:\/\//i.test(path)) return path;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (!API_ROOT) return p;
+  return `${API_ROOT}${p}`;
+}
+
 export function authHeaders() {
   try {
     const raw = sessionStorage.getItem("auth_session");
@@ -22,12 +41,10 @@ export function errMessage(error) {
   return error?.message || "Ha ocurrido un inconveniente con la transacción.";
 }
 
-/** @typedef {{ skipAuth?: boolean } & RequestInit} ApiOpts */
-
 export async function apiFetch(url, opts = {}) {
   const skipAuth = Boolean(opts.skipAuth);
-  /** @type {RequestInit & {skipAuth?: boolean}} */
   const { skipAuth: _omit, ...rest } = opts;
+  const target = resolveApiUrl(url);
   const isForm = rest.body instanceof FormData;
   const merged = new Headers(rest.headers || {});
 
@@ -40,7 +57,7 @@ export async function apiFetch(url, opts = {}) {
       merged.set("Authorization", h.Authorization);
   }
 
-  const resp = await fetch(url, { ...rest, headers: merged });
+  const resp = await fetch(target, { ...rest, headers: merged });
   const text = await resp.text();
   let payload;
   try {
@@ -49,9 +66,7 @@ export async function apiFetch(url, opts = {}) {
     payload = text;
   }
   if (!resp.ok) {
-    const err = /** @type {Error & {status?:number,payload?:any}} */ (
-      new Error(resp.statusText)
-    );
+    const err = new Error(resp.statusText);
     err.status = resp.status;
     err.payload = payload;
     throw err;

@@ -170,7 +170,6 @@ export default function ConsultaClientes() {
           </table>
         </div>
 
-        {/* Modal */}
         <div className={`modal fade ${pendingDelete ? "show d-block" : "d-none"}`} tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">

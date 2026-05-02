@@ -1,0 +1,9 @@
+language = "python3"
+
+run = "cd backend && pip install -r requirements.txt -q && uvicorn app.main:app --host 0.0.0.0 --port 5000"
+
+hidden = ["frontend/node_modules", "frontend/dist", ".git"]
+
+[deployment]
+build = ["sh", "-c", "cd backend && pip install -r requirements.txt"]
+run = ["sh", "-c", "cd backend && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT"]

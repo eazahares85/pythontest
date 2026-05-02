@@ -36,7 +36,7 @@ function readFileAsBase64Prefix(file) {
     const fr = new FileReader();
     fr.onload = () => {
       try {
-        const res = /** @type {string} */ (fr.result || "");
+        const res = String(fr.result || "");
         const parts = res.split(",", 2);
         resolve(parts.length > 1 ? parts[1] : res);
       } catch (e) {
@@ -80,7 +80,6 @@ export default function MantenimientoCliente() {
         const data = await apiFetch("/api/intereses");
         setIntereses(Array.isArray(data) ? data : []);
       } catch {
-        /* el formulario igual bloqueará al guardar */
       }
     }
     cargarCatalogo();
@@ -115,7 +114,6 @@ export default function MantenimientoCliente() {
       }
     }
     cargarCliente();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const previewSrc = useMemo(() => thumb || "", [thumb]);

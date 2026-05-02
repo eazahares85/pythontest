@@ -1,12 +1,3 @@
-# =============================================================================
-# Gitignore — Proyecto Innovasoft (FastAPI + React + MongoDB)
-# Secciones: (1) Python (2) Entornos virtuales (3) Secretos / config
-#            (4) Node / React (5) Pruebas y calidad (6) IDE / OS (7) Varios
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# (1) Python / FastAPI
-# -----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,45 +24,28 @@ htmlcov/
 .coverage
 .coverage.*
 
-# -----------------------------------------------------------------------------
-# (2) Entornos virtuales
-# -----------------------------------------------------------------------------
 .venv/
 venv/
 ENV/
 env/
 .envs/
 
-# -----------------------------------------------------------------------------
-# (3) Variables de entorno y secretos (no subir credenciales a git)
-# -----------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
 
-# -----------------------------------------------------------------------------
-# (4) Node.js / React (frontend en raíz o en subcarpeta p. ej. frontend/)
-# -----------------------------------------------------------------------------
 node_modules/
 .pnp
 .pnp.js
 coverage/
-build/
-dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# -----------------------------------------------------------------------------
-# (5) Pruebas E2E / cobertura frontend
-# -----------------------------------------------------------------------------
 .nyc_output/
 
-# -----------------------------------------------------------------------------
-# (6) IDE y sistema operativo
-# -----------------------------------------------------------------------------
 .idea/
 .vscode/
 *.swp
@@ -81,19 +55,14 @@ lerna-debug.log*
 Thumbs.db
 Desktop.ini
 
-# -----------------------------------------------------------------------------
-# (7) Despliegue (p. ej. Render), logs y artefactos locales
-# -----------------------------------------------------------------------------
 *.log
 logs/
 tmp/
 temp/
 .cache/
 
-# Datos locales de MongoDB si alguna vez se monta volumen en el repo
 data/db/
 mongo-data/
 
-# Imágenes o archivos temporales de prueba (base64 / uploads locales)
 uploads/
 *.tmp
