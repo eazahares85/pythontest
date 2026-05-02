@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.exceptions import UpstreamUnavailableError
-from app.middleware.cors_patch import MissingCORSPatchMiddleware, build_origin_allowed
+from app.middleware.cors_patch import ForceAccessControlASGIMiddleware, build_origin_allowed
 from app.mongo import close_mongo
 from app.routers import auth, clientes, intereses
 
@@ -40,7 +40,7 @@ if _settings.cors_allow_render_regex:
 
 app.add_middleware(CORSMiddleware, **_cors_kw)
 app.add_middleware(
-    MissingCORSPatchMiddleware,
+    ForceAccessControlASGIMiddleware,
     origin_allowed=build_origin_allowed(_origins, _settings.cors_allow_render_regex),
 )
 

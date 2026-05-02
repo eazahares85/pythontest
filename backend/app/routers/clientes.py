@@ -1,14 +1,13 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 
 from app.deps import get_active_session_mapping
 from app.repos.operaciones_repo import registrar_operacion
 from app.schemas.cliente import ClienteActualizar, ClienteCrear, ClienteListadoBody
 from app.services.innovasoft_client import delete_remote, get_json, post_json
 from app.utils.http_upstream import cliente_id_desde_cuerpo, unwrap_upstream_error
+from app.utils.json_safe import safe_json_response
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
 
@@ -23,7 +22,7 @@ async def _parse_json_upstream(upstream_name: str, resp) -> Any:
         data = resp.json()
     except Exception:
         return resp.text
-    return JSONResponse(content=jsonable_encoder(data))
+    return safe_json_response(data)
 
 
 @router.post("/listado")
@@ -68,7 +67,7 @@ async def actualizar(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo actualizar el cliente", upstream),
         )
-    return JSONResponse(content=jsonable_encoder(out))
+    return safe_json_response(out)
 
 
 @router.post("")
@@ -96,7 +95,7 @@ async def crear(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo crear el cliente", upstream),
         )
-    return JSONResponse(content=jsonable_encoder(out))
+    return safe_json_response(out)
 
 
 @router.get("/{cliente_id}")
