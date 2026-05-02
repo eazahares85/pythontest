@@ -24,13 +24,16 @@ _origins = [o.strip() for o in _settings.cors_origins.split(",") if o.strip()]
 if not _origins:
     _origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_kw = {
+    "allow_origins": _origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if _settings.cors_allow_render_regex:
+    _cors_kw["allow_origin_regex"] = r"https://[\w.-]+\.onrender\.com$"
+
+app.add_middleware(CORSMiddleware, **_cors_kw)
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(clientes.router, prefix="/api")
