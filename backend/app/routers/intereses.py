@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from app.deps import get_active_session_mapping
 from app.services.innovasoft_client import get_json
@@ -26,4 +28,4 @@ async def listado(session=Depends(get_active_session_mapping)):
             detail=unwrap_upstream_error("No se pudo obtener el catálogo de intereses", upstream),
         )
 
-    return data
+    return JSONResponse(content=jsonable_encoder(data))

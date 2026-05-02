@@ -1,6 +1,8 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from app.deps import get_active_session_mapping
 from app.repos.operaciones_repo import registrar_operacion
@@ -18,9 +20,10 @@ async def _parse_json_upstream(upstream_name: str, resp) -> Any:
             detail=unwrap_upstream_error(upstream_name, resp),
         )
     try:
-        return resp.json()
+        data = resp.json()
     except Exception:
         return resp.text
+    return JSONResponse(content=jsonable_encoder(data))
 
 
 @router.post("/listado")
@@ -65,7 +68,7 @@ async def actualizar(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo actualizar el cliente", upstream),
         )
-    return out
+    return JSONResponse(content=jsonable_encoder(out))
 
 
 @router.post("")
@@ -93,7 +96,7 @@ async def crear(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo crear el cliente", upstream),
         )
-    return out
+    return JSONResponse(content=jsonable_encoder(out))
 
 
 @router.get("/{cliente_id}")

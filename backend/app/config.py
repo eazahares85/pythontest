@@ -16,8 +16,11 @@ class Settings(BaseSettings):
     innovasoft_api_base: str = "https://pruebareactjs.test-class.com/Api"
 
     environment: str = "development"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    cors_allow_render_regex: bool = False
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "https://innovasoft-front.onrender.com"
+    )
+    cors_allow_render_regex: bool = True
     serve_frontend: bool = False
 
     def innovasoft_url(self, path: str) -> str:

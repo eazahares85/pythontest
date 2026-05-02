@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,8 +9,11 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.exceptions import UpstreamUnavailableError
+from app.middleware.cors_patch import MissingCORSPatchMiddleware, build_origin_allowed
 from app.mongo import close_mongo
 from app.routers import auth, clientes, intereses
+
+_log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -35,11 +39,24 @@ if _settings.cors_allow_render_regex:
     _cors_kw["allow_origin_regex"] = r"https://[\w.-]+\.onrender\.com$"
 
 app.add_middleware(CORSMiddleware, **_cors_kw)
+app.add_middleware(
+    MissingCORSPatchMiddleware,
+    origin_allowed=build_origin_allowed(_origins, _settings.cors_allow_render_regex),
+)
 
 
 @app.exception_handler(UpstreamUnavailableError)
 async def upstream_unavailable_handler(_: Request, exc: UpstreamUnavailableError):
     return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception):
+    _log.exception("Error no controlado: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno del servidor"},
+    )
 
 
 app.include_router(auth.router, prefix="/api")
