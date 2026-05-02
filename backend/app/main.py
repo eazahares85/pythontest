@@ -39,10 +39,6 @@ if _settings.cors_allow_render_regex:
     _cors_kw["allow_origin_regex"] = r"https://[\w.-]+\.onrender\.com$"
 
 app.add_middleware(CORSMiddleware, **_cors_kw)
-app.add_middleware(
-    ForceAccessControlASGIMiddleware,
-    origin_allowed=build_origin_allowed(_origins, _settings.cors_allow_render_regex),
-)
 
 
 @app.exception_handler(UpstreamUnavailableError)
@@ -90,3 +86,8 @@ def _maybe_mount_frontend() -> None:
 
 
 _maybe_mount_frontend()
+
+app = ForceAccessControlASGIMiddleware(
+    app,
+    origin_allowed=build_origin_allowed(_origins, _settings.cors_allow_render_regex),
+)

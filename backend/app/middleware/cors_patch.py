@@ -30,7 +30,11 @@ class ForceAccessControlASGIMiddleware:
     """
     ASGI puro: envuelve `send` y asegura cabeceras CORS en toda respuesta
     (incluidos 4xx/5xx y excepciones) si el origen está permitido.
-    BaseHTTPMiddleware no cubre esos casos.
+
+    Debe envolver **toda** la app FastAPI/Starlette (exportada como `app` en
+    uvicorn), no solo como middleware interno: `ServerErrorMiddleware` envía
+    los 500 del `@app.exception_handler(Exception)` con el `send` que recibe;
+    si este wrapper es el más externo, esas respuestas también llevan CORS.
     """
 
     def __init__(self, app: ASGIApp, *, origin_allowed: Callable[[str], bool]):
