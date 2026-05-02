@@ -22,7 +22,9 @@ export function authHeaders() {
     const raw = sessionStorage.getItem("auth_session");
     if (!raw) return {};
     const s = JSON.parse(raw);
-    return s?.token ? { Authorization: `Bearer ${s.token}` } : {};
+    if (!s || typeof s !== "object") return {};
+    const token = s.token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
     return {};
   }
@@ -59,17 +61,50 @@ export async function apiFetch(url, opts = {}) {
 
   const resp = await fetch(target, { ...rest, headers: merged });
   const text = await resp.text();
-  let payload;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = text;
-  }
+  const trimmed = text.trim();
+
   if (!resp.ok) {
+    let payload;
+    try {
+      payload = trimmed ? JSON.parse(trimmed) : null;
+    } catch {
+      payload = trimmed || null;
+    }
     const err = new Error(resp.statusText);
     err.status = resp.status;
     err.payload = payload;
     throw err;
   }
+
+  if (!trimmed) {
+    const err = new Error("Empty body");
+    err.status = resp.status;
+    err.payload = {
+      detail:
+        "Respuesta vacía del API. Revisa VITE_API_URL en Render (URL del servicio Python, sin / final) y vuelve a desplegar el sitio estático.",
+    };
+    throw err;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(trimmed);
+  } catch {
+    const err = new Error("Invalid JSON");
+    err.status = resp.status;
+    err.payload = {
+      detail:
+        "El servidor no devolvió JSON (¿VITE_API_URL apunta al backend FastAPI o devuelve HTML?). Comprueba la URL y CORS.",
+    };
+    throw err;
+  }
+
+  if (payload === null || typeof payload !== "object") {
+    const err = new Error("Invalid payload");
+    err.status = resp.status;
+    err.payload = { detail: "Respuesta del API inválida (no es un objeto JSON)." };
+    throw err;
+  }
+
   return payload;
 }

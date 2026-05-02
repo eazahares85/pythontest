@@ -35,10 +35,19 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, password }),
     });
 
+    if (!data || typeof data !== "object" || data.token == null || data.userid == null) {
+      const err = new Error("Login inválido");
+      err.payload = {
+        detail:
+          "El servidor no devolvió token ni usuario. Comprueba que VITE_API_URL sea la URL del API en Render y que el login en el backend responda JSON correcto.",
+      };
+      throw err;
+    }
+
     const next = {
       token: data.token,
       userid: String(data.userid),
-      username: String(data.username),
+      username: String(data.username ?? username),
       expiration: data.expiration,
     };
     setSession(next);
