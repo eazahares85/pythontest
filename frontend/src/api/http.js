@@ -77,11 +77,14 @@ export async function apiFetch(url, opts = {}) {
   }
 
   if (!trimmed) {
+    const finalUrl = resp.url || String(target);
     const err = new Error("Empty body");
     err.status = resp.status;
     err.payload = {
       detail:
-        "Respuesta vacía del API. Revisa VITE_API_URL en Render (URL del servicio Python, sin / final) y vuelve a desplegar el sitio estático.",
+        `Respuesta vacía (HTTP ${resp.status}). URL tras redirecciones: ${finalUrl}. Petición prevista: ${target}. ` +
+        `En Render (sitio estático): VITE_API_URL debe estar definida para el BUILD (no solo “runtime”), valor tipo https://TU-SERVICIO-API.onrender.com sin / final y sin /api. ` +
+        `Después de cambiarla: Manual Deploy → Clear build cache and deploy. Abre en otra pestaña: ${resolveApiUrl("/api/health")} y debe verse JSON.`,
     };
     throw err;
   }
