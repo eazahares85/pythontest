@@ -12,6 +12,12 @@ from app.utils.json_safe import safe_json_response
 router = APIRouter(prefix="/clientes", tags=["clientes"])
 
 
+def _fallback_body_if_not_json(upstream) -> Any:
+    if 200 <= upstream.status_code < 300:
+        return upstream.text or ""
+    return {}
+
+
 async def _parse_json_upstream(upstream_name: str, resp) -> Any:
     if resp.status_code >= 400:
         raise HTTPException(
@@ -60,7 +66,7 @@ async def actualizar(
     try:
         out = upstream.json()
     except Exception:
-        out = upstream.text if upstream.ok else {}
+        out = _fallback_body_if_not_json(upstream)
 
     if upstream.status_code >= 400:
         raise HTTPException(
@@ -85,7 +91,7 @@ async def crear(
     try:
         out = upstream.json()
     except Exception:
-        out = upstream.text if upstream.ok else {}
+        out = _fallback_body_if_not_json(upstream)
 
     cid = cliente_id_desde_cuerpo(out) or "sin_id"
     await registrar_operacion("CREAR", username, cid, resultado)
