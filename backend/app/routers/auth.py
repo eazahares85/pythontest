@@ -1,3 +1,6 @@
+import logging
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.deps import bearer_token_required
@@ -7,6 +10,7 @@ from app.services.innovasoft_client import post_json
 from app.utils.http_upstream import unwrap_upstream_error
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+_log = logging.getLogger(__name__)
 
 
 @router.post("/register")
@@ -38,10 +42,17 @@ async def login(body: LoginRequest):
             detail="Usuario y contraseña son requeridos",
         )
 
-    upstream = await post_json(
-        "/api/Authenticate/login",
-        {"username": body.username.strip(), "password": body.password},
-    )
+    try:
+        upstream = await post_json(
+            "/api/Authenticate/login",
+            {"username": body.username.strip(), "password": body.password},
+        )
+    except httpx.HTTPError as exc:
+        _log.warning("login upstream unreachable: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo contactar el servicio de autenticación",
+        ) from exc
 
     try:
         data = upstream.json()
@@ -70,12 +81,22 @@ async def login(body: LoginRequest):
             detail="El servicio no devolvió datos de sesión completos",
         )
 
-    await sessions_repo.create_session_doc(
-        str(token),
-        str(userid),
-        str(username or body.username.strip()),
-        str(expiration) if expiration else None,
-    )
+    try:
+        await sessions_repo.create_session_doc(
+            str(token),
+            str(userid),
+            str(username or body.username.strip()),
+            str(expiration) if expiration else None,
+        )
+    except Exception as exc:
+        _log.exception("persist session to MongoDB failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "No se pudo guardar la sesión (MongoDB). "
+                "En Render/Atlas: revisa MONGODB_URI y Network Access (IP 0.0.0.0/0 o equivalente)."
+            ),
+        ) from exc
 
     return {
         "token": token,

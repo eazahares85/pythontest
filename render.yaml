@@ -21,7 +21,7 @@ services:
       - key: SERVE_FRONTEND
         value: "false"
       - key: CORS_ORIGINS
-        sync: false
+        value: "https://innovasoft-front.onrender.com"
       - key: CORS_ALLOW_RENDER_REGEX
         value: "true"
 
