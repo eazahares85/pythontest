@@ -1,10 +1,11 @@
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from app.mongo import get_db
 
-
 OPERACIONES = "operaciones"
+_log = logging.getLogger(__name__)
 
 
 async def registrar_operacion(
@@ -20,4 +21,9 @@ async def registrar_operacion(
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "resultado": resultado,
     }
-    await get_db()[OPERACIONES].insert_one(doc)
+    try:
+        await get_db()[OPERACIONES].insert_one(doc)
+    except Exception:
+        _log.exception(
+            "Auditoría MongoDB (operaciones) no disponible; la operación principal sigue",
+        )

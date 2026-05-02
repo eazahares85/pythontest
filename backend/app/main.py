@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
+from app.exceptions import UpstreamUnavailableError
 from app.mongo import close_mongo
 from app.routers import auth, clientes, intereses
 
@@ -34,6 +35,12 @@ if _settings.cors_allow_render_regex:
     _cors_kw["allow_origin_regex"] = r"https://[\w.-]+\.onrender\.com$"
 
 app.add_middleware(CORSMiddleware, **_cors_kw)
+
+
+@app.exception_handler(UpstreamUnavailableError)
+async def upstream_unavailable_handler(_: Request, exc: UpstreamUnavailableError):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(clientes.router, prefix="/api")

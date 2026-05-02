@@ -15,13 +15,16 @@ def unwrap_upstream_error(prefix: str, resp: httpx.Response) -> str:
         return f"{prefix} (HTTP {resp.status_code})"
 
 
+def cliente_id_desde_cuerpo(data: Any) -> str:
+    if isinstance(data, dict) and data.get("id") is not None:
+        return str(data["id"]).strip()
+    if isinstance(data, str):
+        return data.strip()
+    return ""
+
+
 def cliente_id_desde_respuesta(resp: httpx.Response) -> str:
     try:
-        data: Any = resp.json()
-        if isinstance(data, dict) and "id" in data:
-            return str(data["id"])
-        if isinstance(data, str):
-            return data.strip() or ""
+        return cliente_id_desde_cuerpo(resp.json())
     except Exception:
-        pass
-    return ""
+        return ""

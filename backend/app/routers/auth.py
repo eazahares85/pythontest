@@ -1,6 +1,5 @@
 import logging
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.deps import bearer_token_required
@@ -42,17 +41,10 @@ async def login(body: LoginRequest):
             detail="Usuario y contraseña son requeridos",
         )
 
-    try:
-        upstream = await post_json(
-            "/api/Authenticate/login",
-            {"username": body.username.strip(), "password": body.password},
-        )
-    except httpx.HTTPError as exc:
-        _log.warning("login upstream unreachable: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No se pudo contactar el servicio de autenticación",
-        ) from exc
+    upstream = await post_json(
+        "/api/Authenticate/login",
+        {"username": body.username.strip(), "password": body.password},
+    )
 
     try:
         data = upstream.json()
@@ -108,5 +100,12 @@ async def login(body: LoginRequest):
 
 @router.post("/logout")
 async def logout(token: str = Depends(bearer_token_required)):
-    await sessions_repo.delete_session_by_token(token)
+    try:
+        await sessions_repo.delete_session_by_token(token)
+    except Exception:
+        _log.exception("MongoDB: cierre de sesión falló")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo cerrar la sesión en el servidor (MongoDB).",
+        ) from None
     return {"ok": True}
