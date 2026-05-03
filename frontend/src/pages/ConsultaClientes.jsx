@@ -2,6 +2,20 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, errMessage } from "../api/http.js";
 
+function sortClientesByIdDesc(list) {
+  if (!Array.isArray(list)) return [];
+  return [...list].sort((a, b) => {
+    const sa = String(a?.id ?? "");
+    const sb = String(b?.id ?? "");
+    const na = Number(sa);
+    const nb = Number(sb);
+    const aNum = Number.isFinite(na) && sa !== "" && String(na) === sa;
+    const bNum = Number.isFinite(nb) && sb !== "" && String(nb) === sb;
+    if (aNum && bNum) return nb - na;
+    return sb.localeCompare(sa, undefined, { numeric: true });
+  });
+}
+
 export default function ConsultaClientes() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -14,28 +28,48 @@ export default function ConsultaClientes() {
   const [pendingDelete, setPendingDelete] = useState(null);
 
   useEffect(() => {
-    const f = location.state?.flash;
-    if (typeof f === "string" && f.trim())
-      setSuccess(f);
+    const st = location.state;
+    if (!st) return;
+    const f = st.flash;
+    if (typeof f === "string" && f.trim()) setSuccess(f);
+    if (st.recargarListado) {
+      if (st.limpiarFiltros) {
+        setNombre("");
+        setIdentificacion("");
+      }
+      void (async () => {
+        await buscarInterno({ nombre: "", identificacion: "" });
+      })();
+    }
   }, [location.state]);
 
-  async function buscar() {
+  async function buscarInterno(override) {
+    const n = override && Object.prototype.hasOwnProperty.call(override, "nombre") ? override.nombre : nombre;
+    const idf =
+      override && Object.prototype.hasOwnProperty.call(override, "identificacion")
+        ? override.identificacion
+        : identificacion;
     setError("");
-    setSuccess("");
     try {
       setBusy(true);
       const data = await apiFetch("/api/clientes/listado", {
         method: "POST",
-        body: JSON.stringify({ nombre, identificacion }),
+        body: JSON.stringify({ nombre: n ?? "", identificacion: idf ?? "" }),
       });
       const list = Array.isArray(data) ? data : [];
-      setRows(list);
+      setRows(sortClientesByIdDesc(list));
     } catch (e) {
       setRows([]);
       setError(errMessage(e));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function buscar(override) {
+    setError("");
+    setSuccess("");
+    await buscarInterno(override);
   }
 
   async function confirmarEliminar() {

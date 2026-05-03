@@ -185,35 +185,50 @@ export default function MantenimientoCliente() {
             interesFK: interesId,
           }),
         });
-        if (creado && creado.exito === false) {
-          setError(
-            typeof creado.mensaje === "string" && creado.mensaje.trim()
-              ? creado.mensaje.trim()
-              : "No se pudo confirmar la creación del cliente."
-          );
+        const idNuevo = String(creado?.id ?? "").trim();
+        const respuestaInvalida = !creado || typeof creado !== "object";
+        const altaRechazada =
+          respuestaInvalida ||
+          creado.exito === false ||
+          !idNuevo ||
+          idNuevo === "sin_id";
+        if (altaRechazada) {
+          let msg = "No se pudo confirmar la creación del cliente.";
+          if (respuestaInvalida) msg = "Respuesta inválida del servidor.";
+          else if (typeof creado.mensaje === "string" && creado.mensaje.trim())
+            msg = creado.mensaje.trim();
+          setError(msg);
           return;
         }
-      } else {
-        await apiFetch("/api/clientes/actualizar", {
-          method: "POST",
-          body: JSON.stringify({
-            usuarioId: session.userid,
-            id: clientId || id,
-            nombre,
-            apellidos,
-            identificacion,
-            celular: telCel,
-            otroTelefono: telOtro,
-            direccion,
-            fNacimiento: toUtcIsoMidday(fNac),
-            fAfiliacion: toUtcIsoMidday(fAfil),
-            sexo,
-            resennaPersonal: resena,
-            imagen: imagenB64 || "",
-            interesFK: interesId,
-          }),
+        const flashOk =
+          typeof creado.mensaje === "string" && creado.mensaje.trim()
+            ? creado.mensaje.trim()
+            : "Cliente creado correctamente.";
+        navigate("/clientes", {
+          replace: false,
+          state: { flash: flashOk, recargarListado: true, limpiarFiltros: true },
         });
+        return;
       }
+      await apiFetch("/api/clientes/actualizar", {
+        method: "POST",
+        body: JSON.stringify({
+          usuarioId: session.userid,
+          id: clientId || id,
+          nombre,
+          apellidos,
+          identificacion,
+          celular: telCel,
+          otroTelefono: telOtro,
+          direccion,
+          fNacimiento: toUtcIsoMidday(fNac),
+          fAfiliacion: toUtcIsoMidday(fAfil),
+          sexo,
+          resennaPersonal: resena,
+          imagen: imagenB64 || "",
+          interesFK: interesId,
+        }),
+      });
 
       navigate("/clientes", { replace: false, state: { flash: "Operación realizada correctamente." } });
     } catch (e) {

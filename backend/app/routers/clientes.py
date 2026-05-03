@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any
 
@@ -22,6 +23,80 @@ def _fallback_body_if_not_json(upstream) -> Any:
     if 200 <= upstream.status_code < 300:
         return upstream.text or ""
     return {}
+
+
+def _normalizar_listado_clientes(raw: Any) -> list:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict):
+        for k in ("data", "items", "result", "value", "clientes", "Data", "Items", "Result"):
+            v = raw.get(k)
+            if isinstance(v, list):
+                return v
+    return []
+
+
+async def _id_cliente_tras_listado(
+    *,
+    token: str,
+    userid: str,
+    identificacion: str,
+    nombre: str,
+) -> str:
+    await asyncio.sleep(0.25)
+    list_payload = {
+        "identificacion": (identificacion or "").strip(),
+        "nombre": (nombre or "").strip(),
+        "usuarioId": userid,
+    }
+    try:
+        lr = await post_json("/api/Cliente/Listado", list_payload, bearer=token)
+    except Exception:
+        return ""
+    if lr.status_code >= 400:
+        return ""
+    try:
+        raw = lr.json()
+    except Exception:
+        return ""
+    rows = _normalizar_listado_clientes(raw)
+    ident = (identificacion or "").strip().casefold()
+    nom = (nombre or "").strip().casefold()
+    if not ident:
+        return ""
+
+    def _row_ident(r: dict) -> str:
+        for k in ("identificacion", "Identificacion"):
+            if k in r and r[k] is not None:
+                return str(r[k]).strip()
+        return ""
+
+    def _row_nombre(r: dict) -> str:
+        for k in ("nombre", "Nombre"):
+            if k in r and r[k] is not None:
+                return str(r[k]).strip()
+        return ""
+
+    def _row_id(r: dict) -> str:
+        for k in ("id", "Id", "clienteId", "ClienteId"):
+            if k in r and r[k] is not None:
+                s = str(r[k]).strip()
+                if s:
+                    return s
+        return ""
+
+    matches = [r for r in rows if isinstance(r, dict) and _row_ident(r).casefold() == ident]
+    if nom:
+        for r in matches:
+            if _row_nombre(r).casefold() == nom:
+                cid = _row_id(r)
+                if cid:
+                    return cid
+    for r in matches:
+        cid = _row_id(r)
+        if cid:
+            return cid
+    return ""
 
 
 def _motivo_sin_id_remoto(upstream: httpx.Response) -> str:
@@ -168,16 +243,32 @@ async def crear(
     payload = _exito_cliente_payload(out, cliente_id=cid, crear=True)
     fid = str(payload.get("id", "")).strip()
     if not fid or fid == "sin_id":
-        razon_remota = extraer_razon_remota_innovasoft(out)
-        tecnico = _motivo_sin_id_remoto(upstream)
-        if razon_remota:
-            texto = f"Innovasoft: {razon_remota} — {tecnico}"
-        else:
-            texto = (
-                "No se pudo confirmar la creación: Innovasoft no devolvió id ni mensaje de error reconocible "
-                f"en el cuerpo. — {tecnico}"
+        nid = await _id_cliente_tras_listado(
+            token=token,
+            userid=str(session["userid"]),
+            identificacion=body.identificacion,
+            nombre=body.nombre,
+        )
+        if nid:
+            merged: dict[str, Any] = {"id": nid}
+            if isinstance(out, dict):
+                merged = {**dict(out), "id": nid}
+            payload = _exito_cliente_payload(merged, cliente_id=nid, crear=True)
+            payload["mensaje"] = (
+                "Cliente creado correctamente. El id se obtuvo del listado porque Innovasoft "
+                "respondió al alta sin cuerpo JSON con el identificador."
             )
-        payload = {"id": "", "exito": False, "mensaje": texto}
+        else:
+            razon_remota = extraer_razon_remota_innovasoft(out)
+            tecnico = _motivo_sin_id_remoto(upstream)
+            if razon_remota:
+                texto = f"Innovasoft: {razon_remota} — {tecnico}"
+            else:
+                texto = (
+                    "No se pudo confirmar la creación: Innovasoft no devolvió id en el alta, "
+                    f"y el listado no devolvió un cliente con esta identificación. — {tecnico}"
+                )
+            payload = {"id": "", "exito": False, "mensaje": texto}
     else:
         payload.setdefault("exito", True)
         payload.setdefault("mensaje", "Cliente creado correctamente.")
