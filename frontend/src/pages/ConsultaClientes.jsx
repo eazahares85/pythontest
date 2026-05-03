@@ -2,6 +2,26 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, errMessage } from "../api/http.js";
 
+/** Alinea campos del listado Innovasoft (Id, Nombre, …) para la tabla y DELETE. */
+function normalizeListadoCliente(r) {
+  if (!r || typeof r !== "object") return r;
+  let id = "";
+  for (const k of ["id", "Id", "clienteId", "ClienteId"]) {
+    const v = r[k];
+    if (v != null && String(v).trim()) {
+      id = String(v).trim();
+      break;
+    }
+  }
+  return {
+    ...r,
+    id,
+    nombre: r.nombre ?? r.Nombre ?? "",
+    apellidos: r.apellidos ?? r.Apellidos ?? "",
+    identificacion: r.identificacion ?? r.Identificacion ?? "",
+  };
+}
+
 function sortClientesByIdDesc(list) {
   if (!Array.isArray(list)) return [];
   return [...list].sort((a, b) => {
@@ -26,6 +46,10 @@ export default function ConsultaClientes() {
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
+
+  useEffect(() => {
+    void buscarInterno({ nombre: "", identificacion: "" });
+  }, []);
 
   useEffect(() => {
     const st = location.state;
@@ -56,7 +80,8 @@ export default function ConsultaClientes() {
         method: "POST",
         body: JSON.stringify({ nombre: n ?? "", identificacion: idf ?? "" }),
       });
-      const list = Array.isArray(data) ? data : [];
+      const raw = Array.isArray(data) ? data : [];
+      const list = raw.map(normalizeListadoCliente);
       setRows(sortClientesByIdDesc(list));
     } catch (e) {
       setRows([]);
@@ -73,8 +98,12 @@ export default function ConsultaClientes() {
   }
 
   async function confirmarEliminar() {
-    const id = pendingDelete?.id;
-    if (!id) return;
+    const id = pendingDelete?.id != null ? String(pendingDelete.id).trim() : "";
+    if (!id) {
+      setError("No se puede eliminar: el registro no incluye un identificador de cliente válido.");
+      setPendingDelete(null);
+      return;
+    }
     setError("");
     setSuccess("");
     try {
@@ -166,14 +195,15 @@ export default function ConsultaClientes() {
               {rows.length === 0 ? (
                 <tr>
                   <td className="text-muted text-center small" colSpan={3}>
-                    {busy ? "Buscando…" : 'Use los filtros y la lupa para buscar registros.'}
+                    {busy ? "Cargando…" : "No hay clientes que mostrar con los filtros actuales."}
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => {
                   const full = `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim();
+                  const rowKey = r.id ? String(r.id) : `${r.identificacion}-${full}`;
                   return (
-                    <tr key={r.id}>
+                    <tr key={rowKey}>
                       <td>{r.identificacion}</td>
                       <td>{full}</td>
                       <td className="text-center">
@@ -204,7 +234,13 @@ export default function ConsultaClientes() {
           </table>
         </div>
 
-        <div className={`modal fade ${pendingDelete ? "show d-block" : "d-none"}`} tabIndex="-1">
+        {pendingDelete ? <div className="modal-backdrop fade show" aria-hidden="true" /> : null}
+        <div
+          className={`modal fade ${pendingDelete ? "show d-block" : "d-none"}`}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal={pendingDelete ? "true" : undefined}
+        >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0">
@@ -221,13 +257,12 @@ export default function ConsultaClientes() {
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPendingDelete(null)}>
                   Cancelar
                 </button>
-                <button type="button" className="btn btn-danger btn-sm" onClick={() => confirmarEliminar()}>
+                <button type="button" className="btn btn-danger btn-sm" onClick={() => void confirmarEliminar()}>
                   Eliminar
                 </button>
               </div>
             </div>
           </div>
-          {pendingDelete ? <div className="modal-backdrop fade show" /> : null}
         </div>
       </div>
     </div>
