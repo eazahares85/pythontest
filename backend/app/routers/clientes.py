@@ -1,12 +1,18 @@
+import json
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.deps import get_active_session_mapping
 from app.repos.operaciones_repo import registrar_operacion
 from app.schemas.cliente import ClienteActualizar, ClienteCrear, ClienteListadoBody
 from app.services.innovasoft_client import delete_remote, get_json, post_json
-from app.utils.http_upstream import cliente_id_desde_cuerpo, unwrap_upstream_error
+from app.utils.http_upstream import (
+    cliente_id_desde_cuerpo,
+    extraer_razon_remota_innovasoft,
+    unwrap_upstream_error,
+)
 from app.utils.json_safe import safe_json_response
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
@@ -16,6 +22,63 @@ def _fallback_body_if_not_json(upstream) -> Any:
     if 200 <= upstream.status_code < 300:
         return upstream.text or ""
     return {}
+
+
+def _motivo_sin_id_remoto(upstream: httpx.Response) -> str:
+    ct = upstream.headers.get("content-type", "") or "(sin Content-Type)"
+    raw = (upstream.text or "").strip()
+    base = (
+        f"HTTP {upstream.status_code}; Content-Type: {ct}. "
+        "Desde este proxy no se recibió un JSON con el campo id del cliente creado."
+    )
+    if not raw:
+        return (
+            base
+            + " El cuerpo estaba vacío: no hay detalle del servidor Innovasoft "
+            "(timeout, error intermedio o el API no documenta la respuesta de éxito)."
+        )
+    snip = raw[:400].replace("\n", " ")
+    return (
+        base
+        + f" Cuerpo (extracto, no válido como JSON con id): {snip!r}"
+    )
+
+
+def _exito_cliente_payload(out: Any, *, cliente_id: str, crear: bool) -> dict[str, Any]:
+    msg = "Cliente creado correctamente." if crear else "Cliente actualizado correctamente."
+    if isinstance(out, dict):
+        merged = dict(out)
+        if "mensaje" not in merged:
+            m = merged.get("message")
+            merged["mensaje"] = (m if isinstance(m, str) and m.strip() else None) or msg
+        merged.pop("message", None)
+        merged.pop("razon", None)
+        cid = str(merged.get("id", "")).strip()
+        if (not cid or cid == "sin_id") and cliente_id and cliente_id != "sin_id":
+            merged["id"] = cliente_id
+        cid = str(merged.get("id", "")).strip()
+        merged["exito"] = bool(cid and cid != "sin_id")
+        return merged
+    if isinstance(out, str) and out.strip():
+        raw = out.strip()
+        if raw.startswith("{") and raw.endswith("}"):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    return _exito_cliente_payload(parsed, cliente_id=cliente_id, crear=crear)
+            except Exception:
+                pass
+        return {"id": raw, "mensaje": msg, "exito": True}
+    if cliente_id and cliente_id != "sin_id":
+        return {"id": cliente_id, "mensaje": msg, "exito": True}
+    return {
+        "id": "",
+        "exito": False,
+        "mensaje": (
+            "Innovasoft no devolvió un identificador de cliente ni un cuerpo JSON reconocible; "
+            "no se puede confirmar si el alta quedó registrada allí."
+        ),
+    }
 
 
 async def _parse_json_upstream(upstream_name: str, resp) -> Any:
@@ -73,7 +136,8 @@ async def actualizar(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo actualizar el cliente", upstream),
         )
-    return safe_json_response(out)
+    payload = _exito_cliente_payload(out, cliente_id=cliente_id, crear=False)
+    return safe_json_response(payload)
 
 
 @router.post("")
@@ -101,7 +165,23 @@ async def crear(
             status_code=upstream.status_code,
             detail=unwrap_upstream_error("No se pudo crear el cliente", upstream),
         )
-    return safe_json_response(out)
+    payload = _exito_cliente_payload(out, cliente_id=cid, crear=True)
+    fid = str(payload.get("id", "")).strip()
+    if not fid or fid == "sin_id":
+        razon_remota = extraer_razon_remota_innovasoft(out)
+        tecnico = _motivo_sin_id_remoto(upstream)
+        if razon_remota:
+            texto = f"Innovasoft: {razon_remota} — {tecnico}"
+        else:
+            texto = (
+                "No se pudo confirmar la creación: Innovasoft no devolvió id ni mensaje de error reconocible "
+                f"en el cuerpo. — {tecnico}"
+            )
+        payload = {"id": "", "exito": False, "mensaje": texto}
+    else:
+        payload.setdefault("exito", True)
+        payload.setdefault("mensaje", "Cliente creado correctamente.")
+    return safe_json_response(payload)
 
 
 @router.get("/{cliente_id}")

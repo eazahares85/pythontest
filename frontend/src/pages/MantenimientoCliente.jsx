@@ -167,7 +167,7 @@ export default function MantenimientoCliente() {
     try {
       setBusy(true);
       if (!isEdit) {
-        await apiFetch("/api/clientes", {
+        const creado = await apiFetch("/api/clientes", {
           method: "POST",
           body: JSON.stringify({
             usuarioId: session.userid,
@@ -185,6 +185,14 @@ export default function MantenimientoCliente() {
             interesFK: interesId,
           }),
         });
+        if (creado && creado.exito === false) {
+          setError(
+            typeof creado.mensaje === "string" && creado.mensaje.trim()
+              ? creado.mensaje.trim()
+              : "No se pudo confirmar la creación del cliente."
+          );
+          return;
+        }
       } else {
         await apiFetch("/api/clientes/actualizar", {
           method: "POST",
